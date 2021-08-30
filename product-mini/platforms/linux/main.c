@@ -12,8 +12,6 @@
 static int app_argc;
 static char **app_argv;
 
-#define MODULE_PATH ("--module-path=")
-
 static int
 print_help()
 {
@@ -28,10 +26,6 @@ print_help()
     printf("  --dir=<dir>            Grant wasi access to the given host directories\n");
     printf("                         to the program, for example:\n");
     printf("                           --dir=<dir1> --dir=<dir2>\n");
-#endif
-#if WASM_ENABLE_MULTI_MODULE != 0
-    printf("  --module-path=         Indicate a module search path. default is current\n"
-           "                         directory('./')\n");
 #endif
 #if WASM_ENABLE_LIB_PTHREAD != 0
     printf("  --max-threads=n        Set maximum thread number per cluster, default is 4\n");
@@ -76,48 +70,6 @@ static char global_heap_buf[WASM_GLOBAL_HEAP_SIZE * BH_KB] = { 0 };
 static char global_heap_buf[10 * 1024 * 1024] = { 0 };
 #endif
 // #endif
-
-#if WASM_ENABLE_MULTI_MODULE != 0
-static char *
-handle_module_path(const char *module_path)
-{
-    /* next character after = */
-    return (strchr(module_path, '=')) + 1;
-}
-
-static char *module_search_path = ".";
-
-static bool
-module_reader_callback(const char *module_name, uint8 **p_buffer,
-                       uint32 *p_size)
-{
-    const char *format = "%s/%s.wasm";
-    int sz = strlen(module_search_path) + strlen("/") + strlen(module_name) +
-             strlen(".wasm") + 1;
-    char *wasm_file_name = BH_MALLOC(sz);
-    if (!wasm_file_name) {
-        return false;
-    }
-
-    snprintf(wasm_file_name, sz, format, module_search_path, module_name);
-
-    *p_buffer = (uint8_t *)bh_read_file_to_buffer(wasm_file_name, p_size);
-
-    wasm_runtime_free(wasm_file_name);
-    return *p_buffer != NULL;
-}
-
-static void
-moudle_destroyer(uint8 *buffer, uint32 size)
-{
-    if (!buffer) {
-        return;
-    }
-
-    wasm_runtime_free(buffer);
-    buffer = NULL;
-}
-#endif /* WASM_ENABLE_MULTI_MODULE */
 
 int
 main(int argc, char *argv[])
@@ -183,14 +135,6 @@ main(int argc, char *argv[])
             }
         }
 #endif /* WASM_ENABLE_LIBC_WASI */
-#if WASM_ENABLE_MULTI_MODULE != 0
-        else if (!strncmp(argv[0], MODULE_PATH, strlen(MODULE_PATH))) {
-            module_search_path = handle_module_path(argv[0]);
-            if (!strlen(module_search_path)) {
-                return print_help();
-            }
-        }
-#endif
 #if WASM_ENABLE_LIB_PTHREAD != 0
         else if (!strncmp(argv[0], "--max-threads=", 14)) {
             if (argv[0][14] == '\0')
@@ -225,10 +169,6 @@ main(int argc, char *argv[])
     if (!(wasm_file_buf =
             (uint8 *)bh_read_file_to_buffer(wasm_file, &wasm_file_size)))
         goto fail1;
-
-#if WASM_ENABLE_MULTI_MODULE != 0
-    wasm_runtime_set_module_reader(module_reader_callback, moudle_destroyer);
-#endif
 
     /* load WASM module */
     if (!(wasm_module = wasm_runtime_load(wasm_file_buf, wasm_file_size,
