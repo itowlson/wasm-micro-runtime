@@ -19,8 +19,6 @@ print_help()
 {
     printf("Usage: iwasm [-options] wasm_file [args...]\n");
     printf("options:\n");
-    printf("  -f|--function name     Specify a function name of the module to run rather\n"
-           "                         than main\n");
     printf("  --stack-size=n         Set maximum stack size in bytes, default is 16 KB\n");
     printf("  --heap-size=n          Set maximum heap size in bytes, default is 16 KB\n");
 #if WASM_ENABLE_LIBC_WASI != 0
@@ -49,16 +47,6 @@ app_instance_main(wasm_module_inst_t module_inst)
     wasm_application_execute_main(module_inst, app_argc, app_argv);
     if ((exception = wasm_runtime_get_exception(module_inst)))
         printf("%s\n", exception);
-    return NULL;
-}
-
-static void *
-app_instance_func(wasm_module_inst_t module_inst, const char *func_name)
-{
-    wasm_application_execute_func(module_inst, func_name, app_argc - 1,
-                                  app_argv + 1);
-    /* The result of wasm function or exception info was output inside
-       wasm_application_execute_func(), here we don't output them again. */
     return NULL;
 }
 
@@ -137,7 +125,6 @@ main(int argc, char *argv[])
     printf("STOP! WAMR TIME\n");
 
     char *wasm_file = NULL;
-    const char *func_name = NULL;
     uint8 *wasm_file_buf = NULL;
     uint32 wasm_file_size;
     uint32 stack_size = 16 * 1024, heap_size = 16 * 1024;
@@ -154,15 +141,7 @@ main(int argc, char *argv[])
 
     /* Process options.  */
     for (argc--, argv++; argc > 0 && argv[0][0] == '-'; argc--, argv++) {
-        if (!strcmp(argv[0], "-f") || !strcmp(argv[0], "--function")) {
-            argc--, argv++;
-            if (argc < 2) {
-                print_help();
-                return 0;
-            }
-            func_name = argv[0];
-        }
-        else if (!strncmp(argv[0], "--stack-size=", 13)) {
+        if (!strncmp(argv[0], "--stack-size=", 13)) {
             if (argv[0][13] == '\0')
                 return print_help();
             stack_size = atoi(argv[0] + 13);
@@ -271,10 +250,7 @@ main(int argc, char *argv[])
         goto fail3;
     }
 
-    if (func_name)
-        app_instance_func(wasm_module_inst, func_name);
-    else
-        app_instance_main(wasm_module_inst);
+    app_instance_main(wasm_module_inst);
 
     /* destroy the module instance */
     wasm_runtime_deinstantiate(wasm_module_inst);
