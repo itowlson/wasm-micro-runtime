@@ -27,10 +27,6 @@ print_help()
 #endif
     printf("  --stack-size=n         Set maximum stack size in bytes, default is 16 KB\n");
     printf("  --heap-size=n          Set maximum heap size in bytes, default is 16 KB\n");
-    printf("  --repl                 Start a very simple REPL (read-eval-print-loop) mode\n"
-           "                         that runs commands in the form of \"FUNC ARG...\"\n");
-    printf("  --xip                  Enable XIP (Execution In Place) mode to run AOT file\n"
-           "                         generated with \"--enable-indirect-mode\" flag\n");
 #if WASM_ENABLE_LIBC_WASI != 0
     printf("  --env=<env>            Pass wasi environment variables with \"key=value\"\n");
     printf("                         to the program, for example:\n");
