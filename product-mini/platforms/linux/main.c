@@ -19,14 +19,12 @@ print_help()
     printf("options:\n");
     printf("  --stack-size=n         Set maximum stack size in bytes, default is 16 KB\n");
     printf("  --heap-size=n          Set maximum heap size in bytes, default is 16 KB\n");
-#if WASM_ENABLE_LIBC_WASI != 0
     printf("  --env=<env>            Pass wasi environment variables with \"key=value\"\n");
     printf("                         to the program, for example:\n");
     printf("                           --env=\"key1=value1\" --env=\"key2=value2\"\n");
     printf("  --dir=<dir>            Grant wasi access to the given host directories\n");
     printf("                         to the program, for example:\n");
     printf("                           --dir=<dir1> --dir=<dir2>\n");
-#endif
     return 1;
 }
 
@@ -41,7 +39,6 @@ app_instance_main(wasm_module_inst_t module_inst)
     return NULL;
 }
 
-#if WASM_ENABLE_LIBC_WASI != 0
 static bool
 validate_env_str(char *env)
 {
@@ -58,7 +55,6 @@ validate_env_str(char *env)
 
     return true;
 }
-#endif
 
 // #if WASM_ENABLE_GLOBAL_HEAP_POOL != 0
 #ifdef __NuttX__
@@ -81,12 +77,10 @@ main(int argc, char *argv[])
     wasm_module_inst_t wasm_module_inst = NULL;
     RuntimeInitArgs init_args;
     char error_buf[128] = { 0 };
-#if WASM_ENABLE_LIBC_WASI != 0
     const char *dir_list[8] = { NULL };
     uint32 dir_list_size = 0;
     const char *env_list[8] = { NULL };
     uint32 env_list_size = 0;
-#endif
 
     /* Process options.  */
     for (argc--, argv++; argc > 0 && argv[0][0] == '-'; argc--, argv++) {
@@ -100,7 +94,6 @@ main(int argc, char *argv[])
                 return print_help();
             heap_size = atoi(argv[0] + 12);
         }
-#if WASM_ENABLE_LIBC_WASI != 0
         else if (!strncmp(argv[0], "--dir=", 6)) {
             if (argv[0][6] == '\0')
                 return print_help();
@@ -131,7 +124,6 @@ main(int argc, char *argv[])
                 return print_help();
             }
         }
-#endif /* WASM_ENABLE_LIBC_WASI */
         else
             return print_help();
     }
@@ -167,10 +159,8 @@ main(int argc, char *argv[])
         goto fail2;
     }
 
-#if WASM_ENABLE_LIBC_WASI != 0
     wasm_runtime_set_wasi_args(wasm_module, dir_list, dir_list_size, NULL, 0,
                                env_list, env_list_size, argv, argc);
-#endif
 
     /* instantiate the module */
     if (!(wasm_module_inst =
