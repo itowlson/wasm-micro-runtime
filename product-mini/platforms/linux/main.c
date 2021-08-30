@@ -27,9 +27,6 @@ print_help()
     printf("                         to the program, for example:\n");
     printf("                           --dir=<dir1> --dir=<dir2>\n");
 #endif
-#if WASM_ENABLE_LIB_PTHREAD != 0
-    printf("  --max-threads=n        Set maximum thread number per cluster, default is 4\n");
-#endif
     return 1;
 }
 
@@ -135,13 +132,6 @@ main(int argc, char *argv[])
             }
         }
 #endif /* WASM_ENABLE_LIBC_WASI */
-#if WASM_ENABLE_LIB_PTHREAD != 0
-        else if (!strncmp(argv[0], "--max-threads=", 14)) {
-            if (argv[0][14] == '\0')
-                return print_help();
-            wasm_runtime_set_max_thread_num(atoi(argv[0] + 14));
-        }
-#endif
         else
             return print_help();
     }
