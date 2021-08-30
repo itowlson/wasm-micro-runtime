@@ -21,10 +21,6 @@ print_help()
     printf("options:\n");
     printf("  -f|--function name     Specify a function name of the module to run rather\n"
            "                         than main\n");
-#if WASM_ENABLE_LOG != 0
-    printf("  -v=n                   Set log verbose level (0 to 5, default is 2) larger\n"
-           "                         level with more log\n");
-#endif
     printf("  --stack-size=n         Set maximum stack size in bytes, default is 16 KB\n");
     printf("  --heap-size=n          Set maximum heap size in bytes, default is 16 KB\n");
 #if WASM_ENABLE_LIBC_WASI != 0
@@ -149,9 +145,6 @@ main(int argc, char *argv[])
     wasm_module_inst_t wasm_module_inst = NULL;
     RuntimeInitArgs init_args;
     char error_buf[128] = { 0 };
-#if WASM_ENABLE_LOG != 0
-    int log_verbose_level = 2;
-#endif
 #if WASM_ENABLE_LIBC_WASI != 0
     const char *dir_list[8] = { NULL };
     uint32 dir_list_size = 0;
@@ -169,13 +162,6 @@ main(int argc, char *argv[])
             }
             func_name = argv[0];
         }
-#if WASM_ENABLE_LOG != 0
-        else if (!strncmp(argv[0], "-v=", 3)) {
-            log_verbose_level = atoi(argv[0] + 3);
-            if (log_verbose_level < 0 || log_verbose_level > 5)
-                return print_help();
-        }
-#endif
         else if (!strncmp(argv[0], "--stack-size=", 13)) {
             if (argv[0][13] == '\0')
                 return print_help();
@@ -255,10 +241,6 @@ main(int argc, char *argv[])
         printf("Init runtime environment failed.\n");
         return -1;
     }
-
-#if WASM_ENABLE_LOG != 0
-    bh_log_set_verbose_level(log_verbose_level);
-#endif
 
     /* load WASM byte buffer from WASM bin file */
     if (!(wasm_file_buf =
