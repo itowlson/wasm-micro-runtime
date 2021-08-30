@@ -57,6 +57,53 @@ validate_env_str(char *env)
 }
 
 static char global_heap_buf[10 * 1024 * 1024] = { 0 };
+uint32 stack_size = 16 * 1024, heap_size = 16 * 1024;
+static char comms_buf[10 * 1024 * 1024] = { 0 };
+static char comms_error_buf[1024 * 1024] = { 0 };
+static uint8 wasm_module_buf[10 * 1024 * 1024] = { 0 };
+static uint32 wasm_module_size;
+
+void
+do_hyper_guest_side_bit()
+{
+    // We are not allowed ANY stdlib or OS stuff in here: we can ONLY read from (or write to)
+    // wasm_module_buf and comms_buf
+    wasm_module_t wasm_module = NULL;
+    wasm_module_inst_t wasm_module_inst = NULL;
+
+    /* load WASM module */
+    if (!(wasm_module = wasm_runtime_load(wasm_module_buf, wasm_module_size,
+                                          comms_error_buf, sizeof(comms_error_buf)))) {
+        // TODO: printf("%s\n", comms_error_buf);
+        goto fail2;
+    }
+
+    // TODO:
+    // wasm_runtime_set_wasi_args(wasm_module, dir_list, dir_list_size, NULL, 0,
+    //                            env_list, env_list_size, argv, argc);
+
+    /* instantiate the module */
+    if (!(wasm_module_inst =
+            wasm_runtime_instantiate(wasm_module, stack_size, heap_size,
+                                     comms_error_buf, sizeof(comms_error_buf)))) {
+        // TODO: printf("%s\n", error_buf);
+        goto fail3;
+    }
+
+    app_instance_main(wasm_module_inst);
+
+    /* destroy the module instance */
+    wasm_runtime_deinstantiate(wasm_module_inst);
+
+// TODO: probably don't need to do this if running in a hypervisor partition
+fail3:
+    /* unload the module */
+    wasm_runtime_unload(wasm_module);
+
+fail2:
+    wasm_runtime_free(wasm_module_buf);
+
+}
 
 int
 main(int argc, char *argv[])
@@ -66,11 +113,11 @@ main(int argc, char *argv[])
     char *wasm_file = NULL;
     uint8 *wasm_file_buf = NULL;
     uint32 wasm_file_size;
-    uint32 stack_size = 16 * 1024, heap_size = 16 * 1024;
-    wasm_module_t wasm_module = NULL;
-    wasm_module_inst_t wasm_module_inst = NULL;
+    // uint32 stack_size = 16 * 1024, heap_size = 16 * 1024;
+    // wasm_module_t wasm_module = NULL;
+    // wasm_module_inst_t wasm_module_inst = NULL;
     RuntimeInitArgs init_args;
-    char error_buf[128] = { 0 };
+    // char error_buf[128] = { 0 };
     const char *dir_list[8] = { NULL };
     uint32 dir_list_size = 0;
     const char *env_list[8] = { NULL };
@@ -146,35 +193,40 @@ main(int argc, char *argv[])
             (uint8 *)bh_read_file_to_buffer(wasm_file, &wasm_file_size)))
         goto fail1;
 
-    /* load WASM module */
-    if (!(wasm_module = wasm_runtime_load(wasm_file_buf, wasm_file_size,
-                                          error_buf, sizeof(error_buf)))) {
-        printf("%s\n", error_buf);
-        goto fail2;
-    }
+    memcpy(wasm_module_buf, wasm_file_buf, wasm_file_size);
+    wasm_module_size = wasm_file_size;
 
-    wasm_runtime_set_wasi_args(wasm_module, dir_list, dir_list_size, NULL, 0,
-                               env_list, env_list_size, argv, argc);
+    do_hyper_guest_side_bit();
 
-    /* instantiate the module */
-    if (!(wasm_module_inst =
-            wasm_runtime_instantiate(wasm_module, stack_size, heap_size,
-                                     error_buf, sizeof(error_buf)))) {
-        printf("%s\n", error_buf);
-        goto fail3;
-    }
+//     /* load WASM module */
+//     if (!(wasm_module = wasm_runtime_load(wasm_file_buf, wasm_file_size,
+//                                           error_buf, sizeof(error_buf)))) {
+//         printf("%s\n", error_buf);
+//         goto fail2;
+//     }
 
-    app_instance_main(wasm_module_inst);
+//     wasm_runtime_set_wasi_args(wasm_module, dir_list, dir_list_size, NULL, 0,
+//                                env_list, env_list_size, argv, argc);
 
-    /* destroy the module instance */
-    wasm_runtime_deinstantiate(wasm_module_inst);
+//     /* instantiate the module */
+//     if (!(wasm_module_inst =
+//             wasm_runtime_instantiate(wasm_module, stack_size, heap_size,
+//                                      error_buf, sizeof(error_buf)))) {
+//         printf("%s\n", error_buf);
+//         goto fail3;
+//     }
 
-fail3:
-    /* unload the module */
-    wasm_runtime_unload(wasm_module);
+//     app_instance_main(wasm_module_inst);
 
-fail2:
-    wasm_runtime_free(wasm_file_buf);
+//     /* destroy the module instance */
+//     wasm_runtime_deinstantiate(wasm_module_inst);
+
+// fail3:
+//     /* unload the module */
+//     wasm_runtime_unload(wasm_module);
+
+// fail2:
+//     wasm_runtime_free(wasm_file_buf);
 
 fail1:
     /* destroy runtime environment */
