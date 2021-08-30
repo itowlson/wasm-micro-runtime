@@ -56,13 +56,7 @@ validate_env_str(char *env)
     return true;
 }
 
-// #if WASM_ENABLE_GLOBAL_HEAP_POOL != 0
-#ifdef __NuttX__
-static char global_heap_buf[WASM_GLOBAL_HEAP_SIZE * BH_KB] = { 0 };
-#else
 static char global_heap_buf[10 * 1024 * 1024] = { 0 };
-#endif
-// #endif
 
 int
 main(int argc, char *argv[])
